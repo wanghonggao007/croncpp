@@ -71,10 +71,14 @@ namespace cron
       static const cron_int CRON_MIN_MONTHS = 1;
       static const cron_int CRON_MAX_MONTHS = 12;
 
+	  static const cron_int CRON_MIN_YEARS = 2019;
+	  static const cron_int CRON_MAX_YEARS = 2028;
+
       static const cron_int CRON_MAX_YEARS_DIFF = 4;
 
       static const inline std::vector<std::string> DAYS = { "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" };
       static const inline std::vector<std::string> MONTHS = { "NIL", "JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC" };
+	  static const inline std::vector<std::string> YEARS = { "NIL", "二零一九","二零二零", "二零二一", "二零二二", "二零二三", "二零二四", "二零二五", "二零二六", "二零二七", "二零二八"};
    };
 
    struct cron_oracle_traits
@@ -131,12 +135,14 @@ namespace cron
 
    class cronexpr
    {
-      std::bitset<60> seconds;
+   public:
+	  std::bitset<60> seconds;
       std::bitset<60> minutes;
       std::bitset<24> hours;
       std::bitset<7>  days_of_week;
       std::bitset<31> days_of_month;
       std::bitset<12> months;
+	  std::bitset<10> years;
 
       friend bool operator==(cronexpr const & e1, cronexpr const & e2);
       friend bool operator!=(cronexpr const & e1, cronexpr const & e2);
@@ -365,6 +371,8 @@ namespace cron
                }
             }
          }
+		
+		
       }
 
       template <typename Traits>
@@ -414,6 +422,20 @@ namespace cron
             Traits::CRON_MIN_MONTHS,
             Traits::CRON_MAX_MONTHS);
       }
+	  template <typename Traits>
+	  static void set_cron_year(
+		  std::string value,
+		  std::bitset<10>& target)
+	  {
+		  auto year = utils::to_upper(value);
+		  auto year_replaced = replace_ordinals(year, Traits::YEARS);
+
+		  set_cron_field(
+			  year_replaced,
+			  target,
+			  Traits::CRON_MIN_YEARS,
+			  Traits::CRON_MAX_YEARS);
+	  }
 
       template <size_t N>
       inline size_t next_set_bit(
@@ -725,6 +747,8 @@ namespace cron
             return cex.seconds;
          else if constexpr (field == cron_field::month)
             return cex.months;
+		 else if constexpr (field == cron_field::year)
+			 return cex.years;
       }
    }
 
@@ -741,7 +765,7 @@ namespace cron
          std::remove_if(std::begin(fields), std::end(fields),
             [](std::string_view s) {return s.empty(); }),
          std::end(fields));
-      if (fields.size() != 6)
+      if (fields.size() != 7)
          throw bad_cronexpr("cron expression must have six fields");
 
       detail::set_cron_field(fields[0], detail::cron_field_ref<detail::cron_field::second>(cex), Traits::CRON_MIN_SECONDS, Traits::CRON_MAX_SECONDS);
@@ -754,6 +778,8 @@ namespace cron
 
       detail::set_cron_month<Traits>(fields[4], detail::cron_field_ref<detail::cron_field::month>(cex));
 
+	  detail::set_cron_year<Traits>(fields[6], detail::cron_field_ref<detail::cron_field::year>(cex));
+	
       return cex;
    }
 
